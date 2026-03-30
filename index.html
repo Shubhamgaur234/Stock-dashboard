@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Stock Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial;
+            display: flex;
+        }
+        #sidebar {
+            width: 200px;
+            padding: 10px;
+            background: #f4f4f4;
+        }
+        #content {
+            flex: 1;
+            padding: 20px;
+        }
+        button {
+            display: block;
+            margin: 5px 0;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div id="sidebar">
+    <h3>Companies</h3>
+    <button onclick="loadData('INFY')">INFY</button>
+    <button onclick="loadData('TCS')">TCS</button>
+    <button onclick="loadData('RELIANCE')">RELIANCE</button>
+</div>
+
+<!-- Main Content -->
+<div id="content">
+
+    <h2>Stock Chart</h2>
+
+    <!-- Filters -->
+    <select id="days" onchange="reloadData()">
+        <option value="30">Last 30 Days</option>
+        <option value="90">Last 90 Days</option>
+    </select>
+
+    <br><br>
+
+    <!-- Compare -->
+    <input type="text" id="symbol1" placeholder="Symbol 1">
+    <input type="text" id="symbol2" placeholder="Symbol 2">
+    <button onclick="compareStocks()">Compare</button>
+
+    <p id="compareResult"></p>
+
+    <!-- Chart -->
+    <canvas id="chart"></canvas>
+
+</div>
+
+<script>
+
+let currentSymbol = "INFY";
+let chart;
+
+// Load data
+async function loadData(symbol) {
+    currentSymbol = symbol;
+
+    let res = await fetch(`http://127.0.0.1:8000/data/${symbol}`);
+    let data = await res.json();
+
+    let labels = data.map(d => d.Date);
+    let prices = data.map(d => d.Close);
+
+    drawChart(labels, prices);
+}
+
+// Reload with filter
+function reloadData() {
+    loadData(currentSymbol);
+}
+
+// Draw chart
+function drawChart(labels, prices) {
+    if (chart) chart.destroy();
+
+    chart = new Chart(document.getElementById("chart"), {
+        type: "line",
+        data: {
+            labels: labels,
+            datasets: [{
+                label: "Close Price",
+                data: prices
+            }]
+        }
+    });
+}
+
+// Compare API
+async function compareStocks() {
+    let s1 = document.getElementById("symbol1").value;
+    let s2 = document.getElementById("symbol2").value;
+
+    let res = await fetch(`http://127.0.0.1:8000/compare?symbol1=${s1}&symbol2=${s2}`);
+    let data = await res.json();
+
+    document.getElementById("compareResult").innerText =
+        `Avg ${s1}: ${data.avg_price_symbol1} | Avg ${s2}: ${data.avg_price_symbol2}`;
+}
+
+// Load default
+loadData("INFY");
+
+
+
+</script>
+
+</body>
+</html>
