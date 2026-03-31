@@ -9,16 +9,22 @@ body {
     margin: 0;
     font-family: 'Segoe UI', sans-serif;
     display: flex;
+    justify-content: center;
     background: #f9fafb;
 }
 
 
+.wrapper {
+    display: flex;
+    width: 1100px;
+    height: 95vh;
+}
+
+
 #sidebar {
-    width: 230px;
+    width: 180px;
     background: #ffffff;
-    color: #111;
-    padding: 15px;
-    height: 100vh;
+    padding: 10px;
     overflow-y: auto;
     border-right: 1px solid #e5e7eb;
 }
@@ -26,18 +32,18 @@ body {
 #sidebar h3 {
     text-align: center;
     color: #16a34a;
+    font-size: 16px;
 }
-
 
 #sidebar button {
     background: #ecfdf5;
     color: #166534;
     border: 1px solid #bbf7d0;
-    padding: 10px;
-    margin: 6px 4px;
-    border-radius: 8px;
+    padding: 8px;
+    margin: 5px 0;
+    border-radius: 6px;
+    font-size: 13px;
     cursor: pointer;
-    transition: 0.3s;
 }
 
 #sidebar button:hover {
@@ -48,61 +54,62 @@ body {
 
 #content {
     flex: 1;
-    padding: 20px;
+    padding: 15px;
 }
 
 
 .card {
     background: #ffffff;
-    padding: 15px;
-    border-radius: 12px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    margin-bottom: 20px;
+    padding: 12px;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    margin-bottom: 15px;
 }
 
-
 input, select {
-    padding: 8px;
-    margin: 5px;
+    padding: 6px;
+    margin: 4px;
+    font-size: 13px;
     border-radius: 6px;
-    border: 1px solid #d1d5db;
+    border: 1px solid #ccc;
 }
 
 
 button.main-btn {
     background: #16a34a;
     color: white;
-    border: none;
-    padding: 10px 14px;
+    padding: 6px 10px;
+    font-size: 13px;
     border-radius: 6px;
+    border: none;
     cursor: pointer;
 }
 
 
 .stats-bar {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
-    margin-top: 10px;
+    margin-top: 8px;
 }
 
 .stat-item {
     background: #ecfdf5;
     color: #166534;
     border: 1px solid #bbf7d0;
-    padding: 8px 12px;
+    padding: 6px 10px;
     border-radius: 8px;
-    font-size: 14px;
-    transition: 0.3s;
+    font-size: 12px;
 }
 
-.stat-item:hover {
-    background: #16a34a;
-    color: white;
+
+canvas {
+    height: 300px !important;
 }
 
 
 h2 {
+    font-size: 18px;
     color: #16a34a;
 }
 </style>
@@ -111,6 +118,8 @@ h2 {
 
 <body>
 
+<div class="wrapper">
+
 <div id="sidebar">
     <h3>Companies</h3>
     <div id="companyList"></div>
@@ -118,7 +127,7 @@ h2 {
 
 <div id="content">
 
-    <h2>Stock Dashboard</h2>
+    <h2>📊 Stock Dashboard</h2>
 
     <div class="card">
         <select id="days" onchange="reloadData()">
@@ -132,13 +141,14 @@ h2 {
 
         <p id="compareResult"></p>
 
-   
         <div id="statsResult" class="stats-bar"></div>
     </div>
 
     <div class="card">
         <canvas id="chart"></canvas>
     </div>
+
+</div>
 
 </div>
 
@@ -191,7 +201,7 @@ async function loadStats(symbol) {
     let container = document.getElementById("statsResult");
 
     if (data.error) {
-        container.innerHTML = "No stats available";
+        container.innerHTML = "No stats";
         return;
     }
 
@@ -227,6 +237,7 @@ function drawChart(labels, prices, symbol) {
         }
     });
 }
+
 
 async function compareStocks() {
     let s1 = document.getElementById("symbol1").value;
