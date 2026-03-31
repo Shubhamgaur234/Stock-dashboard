@@ -1,12 +1,12 @@
 from fastapi import FastAPI
-import pandas as pd
-import joblib
-from pydantic import BaseModel
-from typing import List
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+import uvicorn
+import webbrowser
+import yfinance as yf
 
 app = FastAPI()
 
-from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
@@ -16,111 +16,66 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# -------------------------------
-# LOAD DATA (FIX MULTIINDEX SAFELY)
-# -------------------------------
-df = pd.read_csv("stock_data.csv")
 
-# Clean column names (important fix)
-df.columns = df.columns.str.strip()
-
-# If MultiIndex somehow exists, flatten it safely
-if isinstance(df.columns, pd.MultiIndex):
-    df.columns = [col[0] for col in df.columns]
-
-# Convert Date to string (for JSON)
-if 'Date' in df.columns:
-    df['Date'] = df['Date'].astype(str)
-
-
-# -------------------------------
-# LOAD MODEL
-# -------------------------------
-model = joblib.load("model.pkl")
-
-
-# -------------------------------
-# PYDANTIC MODELS
-# -------------------------------
-
-class StockData(BaseModel):
-    Date: str
-    Open: float
-    High: float
-    Low: float
-    Close: float
-    Volume: float
-
-
-class Summary(BaseModel):
-    high: float
-    low: float
-    average: float
-
-
-class CompareResponse(BaseModel):
-    symbol1: str
-    symbol2: str
-    message: str
-
-
-# -------------------------------
-# ROOT (OPTIONAL)
-# -------------------------------
 @app.get("/")
 def home():
-    return {"message": "Stock API is running"}
+    return FileResponse("index.html")
 
 
-# -------------------------------
-# 1. COMPANIES
-# -------------------------------
-@app.get("/companies", response_model=List[str])
+@app.get("/companies")
 def get_companies():
-    return ["INFY", "TCS"]
+    return [
+        "INFY","TCS","RELIANCE","HCLTECH","WIPRO",
+        "SBIN","ICICIBANK","HDFCBANK","AXISBANK",
+        "ITC","LT","BHARTIARTL","KOTAKBANK"
+    ]
 
 
-# -------------------------------
-# 2. LAST 30 DAYS DATA
-# -------------------------------
-@app.get("/data/{symbol}", response_model=List[StockData])
-def get_data(symbol: str):
-    data = df.tail(30)
-    return data.to_dict(orient="records")
+@app.get("/data/{symbol}")
+def get_data(symbol: str, days: int = 30):
+    try:
+        period = "1mo" if days == 30 else "3mo"
+
+        df = yf.download(symbol + ".NS", period=period)
+
+        if df.empty:
+            return []
+
+        df = df.reset_index().tail(days)
+
+        result = []
+        for i in range(len(df)):
+            row = df.iloc[i]
+
+            result.append({
+                "Date": str(row.iloc[0]),
+                "Close": float(row.iloc[4])
+            })
+
+        return result
+
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/stats/{symbol}")
+def get_stats(symbol: str):
+    try:
+        df = yf.download(symbol + ".NS", period="1y")
+
+        if df.empty:
+            return {"error": "No data"}
+
+        return {
+            "52_week_high": float(df["High"].max()),
+            "52_week_low": float(df["Low"].min()),
+            "average_close": float(df["Close"].mean()),
+            "latest_close": float(df["Close"].iloc[-1])
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
 
 
-# -------------------------------
-# 3. SUMMARY (FIXED)
-# -------------------------------
-@app.get("/summary/{symbol}", response_model=Summary)
-def get_summary(symbol: str):
-    df_clean = df.dropna()
-
-    return {
-        "high": float(df_clean['Close'].max()),
-        "low": float(df_clean['Close'].min()),
-        "average": float(df_clean['Close'].mean())
-    }
-
-
-# -------------------------------
-# 4. COMPARE
-# -------------------------------
-import yfinance as yf
-
-@app.get("/compare")
-def compare(symbol1: str, symbol2: str):
-
-    df1 = yf.download(symbol1 + ".NS", period="1mo")
-    df2 = yf.download(symbol2 + ".NS", period="1mo")
-
-    avg1 = df1['Close'].mean()
-    avg2 = df2['Close'].mean()
-
-    return {
-        "symbol1": symbol1,
-        "symbol2": symbol2,
-        "avg_price_symbol1": float(avg1),
-        "avg_price_symbol2": float(avg2),
-        "message": "Comparison using real data"
-    }
+if __name__ == "__main__":
+    webbrowser.open("http://127.0.0.1:8000")
+    uvicorn.run(app, host="127.0.0.1", port=8000)

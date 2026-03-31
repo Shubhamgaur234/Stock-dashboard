@@ -3,59 +3,142 @@
 <head>
     <title>Stock Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body {
-            font-family: Arial;
-            display: flex;
-        }
-        #sidebar {
-            width: 200px;
-            padding: 10px;
-            background: #f4f4f4;
-        }
-        #content {
-            flex: 1;
-            padding: 20px;
-        }
-        button {
-            display: block;
-            margin: 5px 0;
-            width: 100%;
-        }
-    </style>
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    background: #f9fafb;
+}
+
+
+#sidebar {
+    width: 230px;
+    background: #ffffff;
+    color: #111;
+    padding: 15px;
+    height: 100vh;
+    overflow-y: auto;
+    border-right: 1px solid #e5e7eb;
+}
+
+#sidebar h3 {
+    text-align: center;
+    color: #16a34a;
+}
+
+
+#sidebar button {
+    background: #ecfdf5;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+    padding: 10px;
+    margin: 6px 4px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+#sidebar button:hover {
+    background: #16a34a;
+    color: white;
+}
+
+
+#content {
+    flex: 1;
+    padding: 20px;
+}
+
+
+.card {
+    background: #ffffff;
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
+}
+
+
+input, select {
+    padding: 8px;
+    margin: 5px;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+}
+
+
+button.main-btn {
+    background: #16a34a;
+    color: white;
+    border: none;
+    padding: 10px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+
+.stats-bar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.stat-item {
+    background: #ecfdf5;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: 0.3s;
+}
+
+.stat-item:hover {
+    background: #16a34a;
+    color: white;
+}
+
+
+h2 {
+    color: #16a34a;
+}
+</style>
+
 </head>
+
 <body>
 
-<!-- Sidebar -->
 <div id="sidebar">
     <h3>Companies</h3>
-    <button onclick="loadData('INFY')">INFY</button>
-    <button onclick="loadData('TCS')">TCS</button>
-    <button onclick="loadData('RELIANCE')">RELIANCE</button>
+    <div id="companyList"></div>
 </div>
 
-<!-- Main Content -->
 <div id="content">
 
-    <h2>Stock Chart</h2>
+    <h2>Stock Dashboard</h2>
 
-    <!-- Filters -->
-    <select id="days" onchange="reloadData()">
-        <option value="30">Last 30 Days</option>
-        <option value="90">Last 90 Days</option>
-    </select>
+    <div class="card">
+        <select id="days" onchange="reloadData()">
+            <option value="30">Last 30 Days</option>
+            <option value="90">Last 90 Days</option>
+        </select>
 
-    <br><br>
+        <input type="text" id="symbol1" placeholder="Symbol 1">
+        <input type="text" id="symbol2" placeholder="Symbol 2">
+        <button class="main-btn" onclick="compareStocks()">Compare</button>
 
-    <!-- Compare -->
-    <input type="text" id="symbol1" placeholder="Symbol 1">
-    <input type="text" id="symbol2" placeholder="Symbol 2">
-    <button onclick="compareStocks()">Compare</button>
+        <p id="compareResult"></p>
 
-    <p id="compareResult"></p>
+   
+        <div id="statsResult" class="stats-bar"></div>
+    </div>
 
-    <!-- Chart -->
-    <canvas id="chart"></canvas>
+    <div class="card">
+        <canvas id="chart"></canvas>
+    </div>
 
 </div>
 
@@ -64,26 +147,69 @@
 let currentSymbol = "INFY";
 let chart;
 
-// Load data
+
+async function loadCompanies() {
+    let res = await fetch("/companies");
+    let companies = await res.json();
+
+    let container = document.getElementById("companyList");
+
+    companies.forEach(symbol => {
+        let btn = document.createElement("button");
+        btn.innerText = symbol;
+        btn.onclick = () => loadData(symbol);
+        container.appendChild(btn);
+    });
+}
+
+
 async function loadData(symbol) {
     currentSymbol = symbol;
 
-    let res = await fetch(`http://127.0.0.1:8000/data/${symbol}`);
+    let days = document.getElementById("days").value;
+
+    let res = await fetch(`/data/${symbol}?days=${days}`);
     let data = await res.json();
+
+    if (data.error) {
+        alert(data.error);
+        return;
+    }
 
     let labels = data.map(d => d.Date);
     let prices = data.map(d => d.Close);
 
-    drawChart(labels, prices);
+    drawChart(labels, prices, symbol);
+    loadStats(symbol);
 }
 
-// Reload with filter
+
+async function loadStats(symbol) {
+    let res = await fetch(`/stats/${symbol}`);
+    let data = await res.json();
+
+    let container = document.getElementById("statsResult");
+
+    if (data.error) {
+        container.innerHTML = "No stats available";
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="stat-item">52W High: ${data["52_week_high"].toFixed(2)}</div>
+        <div class="stat-item">52W Low: ${data["52_week_low"].toFixed(2)}</div>
+        <div class="stat-item">Avg: ${data["average_close"].toFixed(2)}</div>
+        <div class="stat-item">Latest: ${data["latest_close"].toFixed(2)}</div>
+    `;
+}
+
+
 function reloadData() {
     loadData(currentSymbol);
 }
 
-// Draw chart
-function drawChart(labels, prices) {
+
+function drawChart(labels, prices, symbol) {
     if (chart) chart.destroy();
 
     chart = new Chart(document.getElementById("chart"), {
@@ -91,29 +217,57 @@ function drawChart(labels, prices) {
         data: {
             labels: labels,
             datasets: [{
-                label: "Close Price",
-                data: prices
+                label: symbol,
+                data: prices,
+                borderColor: "#16a34a",
+                backgroundColor: "rgba(22,163,74,0.2)",
+                tension: 0.4,
+                fill: true
             }]
         }
     });
 }
 
-// Compare API
 async function compareStocks() {
     let s1 = document.getElementById("symbol1").value;
     let s2 = document.getElementById("symbol2").value;
 
-    let res = await fetch(`http://127.0.0.1:8000/compare?symbol1=${s1}&symbol2=${s2}`);
-    let data = await res.json();
+    let days = document.getElementById("days").value;
+
+    let r1 = await fetch(`/data/${s1}?days=${days}`);
+    let r2 = await fetch(`/data/${s2}?days=${days}`);
+
+    let d1 = await r1.json();
+    let d2 = await r2.json();
+
+    let labels = d1.map(d => d.Date);
+
+    let p1 = d1.map(d => d.Close);
+    let p2 = d2.map(d => d.Close);
+
+    if (chart) chart.destroy();
+
+    chart = new Chart(document.getElementById("chart"), {
+        type: "line",
+        data: {
+            labels: labels,
+            datasets: [
+                { label: s1, data: p1, borderColor: "#16a34a", tension: 0.4 },
+                { label: s2, data: p2, borderColor: "#dc2626", tension: 0.4 }
+            ]
+        }
+    });
+
+    let avg1 = p1.reduce((a,b)=>a+b,0)/p1.length;
+    let avg2 = p2.reduce((a,b)=>a+b,0)/p2.length;
 
     document.getElementById("compareResult").innerText =
-        `Avg ${s1}: ${data.avg_price_symbol1} | Avg ${s2}: ${data.avg_price_symbol2}`;
+        `Avg ${s1}: ${avg1.toFixed(2)} | Avg ${s2}: ${avg2.toFixed(2)}`;
 }
 
-// Load default
+
+loadCompanies();
 loadData("INFY");
-
-
 
 </script>
 
