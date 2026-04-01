@@ -11,8 +11,7 @@ What I Did
 
 Collected stock data using yfinance
 Cleaned and processed it with Pandas
-Created features like moving average, lag values, and volatility
-Built a Linear Regression model to predict next day price
+Apply metrics to calculate average price,high low,closing price.
 Created APIs using FastAPI
 Used Pydantic for data validation
 
@@ -21,7 +20,6 @@ Used Pydantic for data validation
 Model
 
 The model predicts the next day's closing price.
-It performs well on test data (R² ~0.95) and captures the overall trend, though it slightly lags on sudden changes.
 
 
 
@@ -47,7 +45,7 @@ uvicorn main:app --reload
 
 Tech Stack
 
-Python, FastAPI, Pandas, Scikit-learn, yfinance
+Python, FastAPI, Pandas, yfinance
 
 
 
