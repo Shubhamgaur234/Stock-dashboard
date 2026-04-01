@@ -11,7 +11,7 @@ What I Did
 
 Collected stock data using yfinance
 Cleaned and processed it with Pandas
-Apply metrics to calculate average price,high low,closing price.
+Calculate key metrics- average price,high low,closing price.
 Created APIs using FastAPI
 Used Pydantic for data validation
 
