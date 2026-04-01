@@ -4,9 +4,9 @@ from fastapi.responses import FileResponse
 import uvicorn
 import webbrowser
 import yfinance as yf
+import pandas as pd
 
 app = FastAPI()
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -16,11 +16,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 @app.get("/")
 def home():
     return FileResponse("index.html")
-
 
 @app.get("/companies")
 def get_companies():
@@ -30,26 +28,21 @@ def get_companies():
         "ITC","LT","BHARTIARTL","KOTAKBANK"
     ]
 
-
 @app.get("/data/{symbol}")
 def get_data(symbol: str, days: int = 30):
     try:
-        period = "1mo" if days == 30 else "3mo"
+        df = yf.download(symbol + ".NS", period="3mo")
 
-        df = yf.download(symbol + ".NS", period=period)
-
-        if df.empty:
+        if df is None or df.empty:
             return []
 
         df = df.reset_index().tail(days)
 
         result = []
-        for i in range(len(df)):
-            row = df.iloc[i]
-
+        for _, row in df.iterrows():
             result.append({
-                "Date": str(row.iloc[0]),
-                "Close": float(row.iloc[4])
+                "date": str(row["Date"]),
+                "close": float(row["Close"])
             })
 
         return result
@@ -62,19 +55,23 @@ def get_stats(symbol: str):
     try:
         df = yf.download(symbol + ".NS", period="1y")
 
-        if df.empty:
+        if df is None or df.empty:
             return {"error": "No data"}
 
+        df = df.reset_index()
+        df["daily_return"] = (df["Close"] - df["Open"]) / df["Open"]
+
         return {
+            "symbol": symbol.upper(),
             "52_week_high": float(df["High"].max()),
             "52_week_low": float(df["Low"].min()),
             "average_close": float(df["Close"].mean()),
-            "latest_close": float(df["Close"].iloc[-1])
+            "latest_close": float(df["Close"].iloc[-1]),
+            "latest_daily_return": round(float(df["daily_return"].iloc[-1]) * 100, 2)
         }
 
     except Exception as e:
         return {"error": str(e)}
-
 
 if __name__ == "__main__":
     webbrowser.open("http://127.0.0.1:8000")
